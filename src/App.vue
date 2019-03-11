@@ -54,11 +54,11 @@
                 <v-divider></v-divider>
                 <v-container grid-list-sm class="pa-4">
                     <v-layout row wrap>
-                        <v-flex v-for="(playlist, index) in playlistNames" xs12>
+                        <v-flex v-for="(playlist, index) in resultPlaylists" xs12>
                             <v-text-field
                                     prepend-icon="playlist_play"
                                     placeholder="Playlist Title"
-                                    :value="playlist"
+                                    :value="playlist.name"
                                     @change="changePlaylistName($event, index)"
                             ></v-text-field>
                         </v-flex>
@@ -67,7 +67,7 @@
                 <v-card-actions>
                     <v-btn flat color="primary" @click="dialog = false">Cancel</v-btn>
                     <v-spacer></v-spacer>
-                    <v-btn flat color="orange"><v-icon left>insert_drive_file</v-icon>Save missed tracks</v-btn>
+                    <v-btn flat @click="saveMissedTracks" color="orange"><v-icon left>insert_drive_file</v-icon>Save missed tracks</v-btn>
                     <v-btn flat @click="importToDeezer"><v-icon left>cloud_upload</v-icon>Import to Deezer</v-btn>
                 </v-card-actions>
             </v-card>
@@ -76,8 +76,9 @@
 </template>
 
 <script>
-    import PlaylistReader from './components/PlaylistReader'
-    import PlaylistTable from './components/PlaylistTable'
+    import PlaylistReader from './components/PlaylistReader';
+    import PlaylistTable from './components/PlaylistTable';
+    import {getSplitArr} from './utils';
 
     export default {
         name: 'App',
@@ -95,7 +96,7 @@
                 allTracksAmount: 0,
                 properTracksAmount: 0,
                 songIds: null,
-                playlistNames: []
+                resultPlaylists: []
             }
         },
         mounted() {
@@ -148,25 +149,25 @@
             openImportModal() {
                 const allTracks = this.$refs.playlistTable.tracks;
                 const properTracks = allTracks.filter(item => item.deezer).map(item => item.deezer.id);
+                const resultArr = getSplitArr(properTracks, 2000);
                 this.allTracksAmount = allTracks.length;
                 this.properTracksAmount = properTracks.length;
-                this.songIds = properTracks.join(); // TODO (10.03.2019) Combine playlist names and songs for it in one obj
-                console.log(this.songIds);
-                const playlistAmount = Math.ceil(this.properTracksAmount / 2000);
-                const arr = [];
-                for (let i=0; i < playlistAmount; i++) {
-                    arr[i] = 'Deezer Importer Playlist-' + (i + 1);
-                }
-                this.playlistNames = arr;
+
+                this.resultPlaylists = resultArr.map((item, i) => {
+                    return {
+                        name: 'Deezer Importer Playlist-' + (i + 1),
+                        songs: item.join()
+                    }
+                });
 
                 this.dialog = true;
             },
             importToDeezer() {
-                const promises = this.playlistNames.map(title => {
+                const promises = this.resultPlaylists.map(pl => {
                     return new Promise(resolve => {
-                        DZ.api('user/me/playlists', 'POST', {title}, (response) => {
+                        DZ.api('user/me/playlists', 'POST', {title: pl.name}, (response) => {
                             console.log("My new playlist ID", response.id);
-                            DZ.api(`playlist/${response.id}/tracks`, 'POST', {songs: this.songIds}, (response) => {
+                            DZ.api(`playlist/${response.id}/tracks`, 'POST', {songs: pl.songs}, (response) => {
                                 console.log("Songs were added",);
                                 resolve(response);
                             });
@@ -179,7 +180,26 @@
                 })
             },
             changePlaylistName(value, index) {
-                this.playlistNames[index] = value;
+                this.resultPlaylists[index].name = value;
+            },
+            saveMissedTracks() {
+                const missedTracks = this.$refs.playlistTable.tracks.reduce((acc, item) => {
+                    if (!item.deezer) {
+                        const {artist, title, length, file} = item;
+                        acc.push({artist, title, length, file});
+                    }
+                    return acc;
+                }, []);
+                this.downloadObjectAsJson(missedTracks);
+            },
+            downloadObjectAsJson(exportObj, exportName = 'missed_tracks') {
+                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportObj, null, '\t'));
+                const downloadAnchorNode = document.createElement('a');
+                downloadAnchorNode.setAttribute("href", dataStr);
+                downloadAnchorNode.setAttribute("download", exportName + ".json");
+                document.body.appendChild(downloadAnchorNode); // required for firefox
+                downloadAnchorNode.click();
+                downloadAnchorNode.remove();
             },
             onPlayTrack(track) {
                 DZ.player.playTracks([track.deezer.id]);
