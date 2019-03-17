@@ -35,10 +35,17 @@
                 this.$refs.uploader.click()
             },
             parsePlaylist(data) {
+                console.log(data);
                 const reader = new FileReader();
 
                 reader.onload = (e) => {
-                    const playlist = PLParser.M3U.parse(e.target.result, { encoding: "utf8" });
+                    let playlist;
+                    if (data.type.split('/')[1] === 'json') {
+                        playlist = JSON.parse(e.target.result);
+                    } else {
+                        playlist = PLParser.M3U.parse(e.target.result, { encoding: "utf8" });
+                    }
+
                     this.$emit('dataParse', playlist)
                 };
                 reader.readAsText(data);

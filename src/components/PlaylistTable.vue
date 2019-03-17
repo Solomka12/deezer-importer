@@ -13,8 +13,8 @@
                     dark
                     :loading="loadStatus === 'fetching'"
                     :disabled="loadStatus !== null"
-                    @click="fetchAllPlaylist">Fetch Deezer Songs</v-btn>
-            <v-dialog v-model="dialog" max-width="500px">
+                    @click="fetchAllPlaylist">Fetch Deezer Songs</v-btn> <!--TODO (17.03.2019): Replase fetch logic to parrent import button-->
+            <v-dialog v-model="dialog" max-width="500px"> <!--TODO (17.03.2019): Add displaing of song list to chose proper one-->
                 <v-card>
                     <v-card-title>
                         <span class="headline">Edit Item</span>
@@ -158,6 +158,7 @@
             },
 
             editItem (item) {
+                console.log(item);
                 this.editedIndex = this.tracks.indexOf(item);
                 this.editedItem = Object.assign({}, item);
                 this.dialog = true
@@ -200,10 +201,20 @@
             },
             getDeezerTrack({artist, title}) {
                 return new Promise((resolve) => {
+                    let allowed = false;
+                    let track = null;
+
+                    setTimeout(() => {
+                        console.log(allowed, track);
+                        if (track !== null) resolve(track);
+                        else allowed = true;
+                    }, 100);
+
                     DZ.api(`/search?q=artist:"${artist}" track:"${title}"`, function (response) {
                         console.log(response);
-                        const track = response.data.find(item => item.type === 'track');
-                        resolve(track);
+                        const fetchedTrack = response.data.find(item => item.type === 'track');
+                        if (allowed) resolve(fetchedTrack);
+                        else track = fetchedTrack;
                     });
                 });
             },

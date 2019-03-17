@@ -34,7 +34,7 @@
             </v-btn>
         </v-footer>
 
-        <v-dialog v-model="dialog" width="800px">
+        <v-dialog v-model="dialog" width="800px"> <!--TODO (17.03.2019): Add success & error alerts-->
             <v-card>
                 <v-card-title
                         class="grey lighten-4 py-4 title"
@@ -123,7 +123,7 @@
                 console.log(data);
                 this.userPlaylist = data;
             },
-            loadFromLS() {
+            loadFromLS() { // TODO (17.03.2019): Add indexedDB
                 this.userPlaylist = JSON.parse(localStorage.getItem('playlistData'));
             },
             deezerLogIn() {
@@ -148,7 +148,9 @@
             },
             openImportModal() {
                 const allTracks = this.$refs.playlistTable.tracks;
-                const properTracks = allTracks.filter(item => item.deezer).map(item => item.deezer.id);
+                let properTracks = allTracks.filter(item => item.deezer).map(item => item.deezer.id);
+                // TODO (17.03.2019): display duplicated tracks
+                properTracks = Array.from(new Set(properTracks)); // Removing duplicated track ids
                 const resultArr = getSplitArr(properTracks, 2000);
                 this.allTracksAmount = allTracks.length;
                 this.properTracksAmount = properTracks.length;
@@ -164,20 +166,26 @@
             },
             importToDeezer() {
                 const promises = this.resultPlaylists.map(pl => {
-                    return new Promise(resolve => {
+                    return new Promise((resolve, reject) => {
                         DZ.api('user/me/playlists', 'POST', {title: pl.name}, (response) => {
-                            console.log("My new playlist ID", response.id);
-                            DZ.api(`playlist/${response.id}/tracks`, 'POST', {songs: pl.songs}, (response) => {
-                                console.log("Songs were added",);
-                                resolve(response);
-                            });
+                            if (response.error) reject(response);
+                            else {
+                                console.log("New playlist ID", response.id);
+                                DZ.api(`playlist/${response.id}/tracks`, 'POST', {songs: pl.songs}, (response) => {
+                                    if (response.error) reject(response);
+                                    else {
+                                        console.log("Songs were added", pl);
+                                        resolve(response);
+                                    }
+                                });
+                            }
                         });
                     })
                 });
 
                 Promise.all(promises).then(res => {
                     console.log('all playlists were added');
-                })
+                }).catch(console.error)
             },
             changePlaylistName(value, index) {
                 this.resultPlaylists[index].name = value;
