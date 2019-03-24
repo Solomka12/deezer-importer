@@ -95,7 +95,6 @@
                 isInLS: false,
                 allTracksAmount: 0,
                 properTracksAmount: 0,
-                songIds: null,
                 resultPlaylists: []
             }
         },

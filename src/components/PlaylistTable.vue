@@ -13,8 +13,8 @@
                     dark
                     :loading="loadStatus === 'fetching'"
                     :disabled="loadStatus !== null"
-                    @click="fetchAllPlaylist">Fetch Deezer Songs</v-btn> <!--TODO (17.03.2019): Replase fetch logic to parrent import button-->
-            <v-dialog v-model="dialog" max-width="500px"> <!--TODO (17.03.2019): Add displaing of song list to chose proper one-->
+                    @click="fetchAllPlaylist">Fetch Deezer Songs</v-btn> <!--TODO (17.03.2019): Replace fetch logic to parent import button-->
+            <v-dialog v-model="dialog" max-width="500px"> <!--TODO (17.03.2019): Add displaying of song list to chose proper one-->
                 <v-card>
                     <v-card-title>
                         <span class="headline">Edit Item</span>
@@ -51,7 +51,10 @@
                 select-all
                 class="elevation-1"
         >
-            <v-progress-linear v-slot:progress color="blue" :value="30"></v-progress-linear>
+            <template v-slot:progress>
+                <v-progress-linear :value="fetchProgressValue"></v-progress-linear> <!--TODO (23.03.2019): make progress bar determinate-->
+            </template>
+
             <template v-slot:items="props">
                 <tr :active="props.selected" class="item-line" :class="getLineClass(props.item)">
                     <td>
@@ -128,7 +131,7 @@
                 rowsPerPage: 50
             },
             tracks: [],
-            selected: [],
+            selected: [], // TODO (24.03.2019): Add logic for selected tracks
             editedIndex: -1,
             editedItem: {
                 name: '',
