@@ -31,7 +31,7 @@
             onFilePicked(e) {
                 this.parsePlaylist(e.target.files[0]);
             },
-            pickFile () {
+            pickFile() {
                 this.$refs.uploader.click()
             },
             parsePlaylist(data) {
@@ -40,13 +40,14 @@
 
                 reader.onload = (e) => {
                     let playlist;
+                    // TODO (31.03.2019): Add more playlists format support and make data validation
                     if (data.type.split('/')[1] === 'json') {
                         playlist = JSON.parse(e.target.result);
                     } else {
                         playlist = PLParser.M3U.parse(e.target.result, { encoding: "utf8" });
                     }
 
-                    this.$emit('dataParse', playlist)
+                    this.$store.commit('setPlaylist', playlist);
                 };
                 reader.readAsText(data);
             }

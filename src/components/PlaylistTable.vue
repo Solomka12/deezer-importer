@@ -52,7 +52,7 @@
                 class="elevation-1"
         >
             <template v-slot:progress>
-                <v-progress-linear :value="fetchProgressValue"></v-progress-linear> <!--TODO (23.03.2019): make progress bar determinate-->
+                <v-progress-linear :value="fetchProgressValue"></v-progress-linear>
             </template>
 
             <template v-slot:items="props">

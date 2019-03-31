@@ -15,7 +15,7 @@
 
         <v-content>
             <div v-if="!userPlaylist" style="text-align: center;">
-                <PlaylistReader @dataParse="onDataParse"/>
+                <PlaylistReader/>
                 <v-btn v-if="isInLS" flat @click="loadFromLS"><span class="mr-2">Load from previous session</span></v-btn>
             </div>
 
@@ -34,13 +34,9 @@
             </v-btn>
         </v-footer>
 
-        <v-dialog v-model="dialog" width="800px"> <!--TODO (17.03.2019): Add success & error alerts-->
+        <v-dialog v-model="importModal" width="800px"> <!--TODO (17.03.2019): Add success & error alerts-->
             <v-card>
-                <v-card-title
-                        class="grey lighten-4 py-4 title"
-                >
-                    Playlists creation
-                </v-card-title>
+                <v-card-title class="grey lighten-4 py-4 title">Playlists creation</v-card-title>
 
                 <v-list three-line subheader>
                     <v-subheader>General Info</v-subheader>
@@ -65,7 +61,7 @@
                     </v-layout>
                 </v-container>
                 <v-card-actions>
-                    <v-btn flat color="primary" @click="dialog = false">Cancel</v-btn>
+                    <v-btn flat color="primary" @click="importModal = false">Cancel</v-btn>
                     <v-spacer></v-spacer>
                     <v-btn flat @click="saveMissedTracks" color="orange"><v-icon left>insert_drive_file</v-icon>Save missed tracks</v-btn>
                     <v-btn flat @click="importToDeezer"><v-icon left>cloud_upload</v-icon>Import to Deezer</v-btn>
@@ -78,7 +74,6 @@
 <script>
     import PlaylistReader from './components/PlaylistReader';
     import PlaylistTable from './components/PlaylistTable';
-    import {getSplitArr} from './utils';
 
     export default {
         name: 'App',
@@ -88,7 +83,7 @@
         },
         data() {
             return {
-                dialog: false,
+                importModal: false,
                 user: null,
                 app_id: 334002,
                 userPlaylist: null,
@@ -118,10 +113,6 @@
             });
         },
         methods: {
-            onDataParse(data) {
-                console.log(data);
-                this.userPlaylist = data;
-            },
             loadFromLS() { // TODO (17.03.2019): Add indexedDB
                 this.userPlaylist = JSON.parse(localStorage.getItem('playlistData'));
             },
@@ -139,29 +130,11 @@
             importPlaylist() {
                 DZ.getLoginStatus((response) => {
                     if (response.status === 'connected') {
-                        if (this.$refs.playlistTable) this.openImportModal();
+                        if (this.$refs.playlistTable) this.importModal = true; // TODO (31.03.2019) Finish playlist import logic with vuex store.
                     } else {
                         this.deezerLogIn();
                     }
                 });
-            },
-            openImportModal() {
-                const allTracks = this.$refs.playlistTable.tracks;
-                let properTracks = allTracks.filter(item => item.deezer).map(item => item.deezer.id);
-                // TODO (17.03.2019): display duplicated tracks
-                properTracks = Array.from(new Set(properTracks)); // Removing duplicated track ids
-                const resultArr = getSplitArr(properTracks, 2000);
-                this.allTracksAmount = allTracks.length;
-                this.properTracksAmount = properTracks.length;
-
-                this.resultPlaylists = resultArr.map((item, i) => {
-                    return {
-                        name: 'Deezer Importer Playlist-' + (i + 1),
-                        songs: item.join()
-                    }
-                });
-
-                this.dialog = true;
             },
             importToDeezer() {
                 const promises = this.resultPlaylists.map(pl => {
