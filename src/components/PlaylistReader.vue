@@ -48,6 +48,7 @@
                     }
 
                     this.$store.commit('setPlaylist', playlist);
+                    this.$store.commit('setPlStatus', 'new');
                 };
                 reader.readAsText(data);
             }

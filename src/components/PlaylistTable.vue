@@ -8,12 +8,7 @@
                     vertical
             ></v-divider>
             <v-spacer></v-spacer>
-            <v-btn
-                    color="blue"
-                    dark
-                    :loading="loadStatus === 'fetching'"
-                    :disabled="loadStatus !== null"
-                    @click="fetchAllPlaylist">Fetch Deezer Songs</v-btn> <!--TODO (17.03.2019): Replace fetch logic to parent import button-->
+
             <v-dialog v-model="dialog" max-width="500px"> <!--TODO (17.03.2019): Add displaying of song list to chose proper one-->
                 <v-card>
                     <v-card-title>
@@ -44,8 +39,8 @@
         <v-data-table
                 v-model="selected"
                 :headers="headers"
-                :items="tracks"
-                :loading="loadStatus === 'fetching'"
+                :items="playlist"
+                :loading="plStatus === 'fetching'"
                 :pagination.sync="pagination"
                 :rows-per-page-items="[5,10,25,50,{text:'$vuetify.dataIterator.rowsPerPageAll',value:-1}]"
                 select-all
@@ -109,16 +104,11 @@
 </template>
 
 <script>
-    import eachSeries from 'async/eachSeries';
+    import { mapState, mapGetters } from 'vuex';
 
     export default {
-        props: {
-            userTracks: Array
-        },
         data: () => ({
             dialog: false,
-            loadStatus: null,
-            fetchedAmount: 0,
             headers: [
                 { text: 'Artist', align: 'right', value: 'artist' },
                 { text: 'Title', align: 'left', value: 'title' },
@@ -140,39 +130,37 @@
         }),
 
         watch: {
-            dialog (val) {
+            dialog(val) {
                 val || this.close()
             }
         },
 
-        created () {
-            this.initialize()
-        },
-
         computed: {
             fetchProgressValue() {
-                return this.fetchedAmount / this.tracks.length * 100;
-            }
+                return this.fetchedAmount / this.playlist.length * 100;
+            },
+            ...mapState([
+                'plStatus',
+                'fetchedAmount',
+                'playlist'
+            ]),
         },
 
+        // TODO (07.04.2019): move all edit logic to state
         methods: {
-            initialize () {
-                this.tracks = JSON.parse(JSON.stringify(this.userTracks));
-            },
-
-            editItem (item) {
+            editItem(item) {
                 console.log(item);
                 this.editedIndex = this.tracks.indexOf(item);
                 this.editedItem = Object.assign({}, item);
                 this.dialog = true
             },
 
-            deleteItem (item) {
+            deleteItem(item) {
                 const index = this.tracks.indexOf(item);
                 confirm('Are you sure you want to delete this item?') && this.tracks.splice(index, 1)
             },
 
-            close () {
+            close() {
                 this.dialog = false;
                 setTimeout(() => {
                     this.editedItem = {name: '', title: ''};
@@ -180,14 +168,14 @@
                 }, 300)
             },
 
-            save () {
+            save() {
                 if (this.editedIndex > -1) {
                     Object.assign(this.tracks[this.editedIndex], this.editedItem);
                     this.getDeezerTrack(this.tracks[this.editedIndex])
                     .then(track => {
                         this.tracks[this.editedIndex].deezer = track;
                         console.log(this.tracks[this.editedIndex]);
-                        this.saveCurrentTracks();
+                        // this.saveCurrentTracks();
                         this.close()
                     });
                 }
@@ -202,43 +190,12 @@
                     track.deezer.title.toLowerCase() !== track.title.trim().toLowerCase()
                 ) return {warn: true}
             },
-            getDeezerTrack({artist, title}) {
-                return new Promise((resolve) => {
-                    let allowed = false;
-                    let track = null;
 
-                    setTimeout(() => {
-                        console.log(allowed, track);
-                        if (track !== null) resolve(track);
-                        else allowed = true;
-                    }, 100);
 
-                    DZ.api(`/search?q=artist:"${artist}" track:"${title}"`, function (response) {
-                        console.log(response);
-                        const fetchedTrack = response.data.find(item => item.type === 'track');
-                        if (allowed) resolve(fetchedTrack);
-                        else track = fetchedTrack;
-                    });
-                });
-            },
-            fetchAllPlaylist() {
-                this.loadStatus = 'fetching';
-                eachSeries(this.tracks, (track, callback) => {
-                    this.getDeezerTrack(track).then(res => {
-                        this.fetchedAmount++;
-                        track.deezer = res;
-                        callback();
-                    }).catch(callback);
-                }, (err) => {
-                    if( err ) console.error(err);
-                    else console.log('All tracks have been processed successfully');
-                    this.loadStatus = null;
-                    this.saveCurrentTracks();
-                });
-            },
-            saveCurrentTracks() {
+            /*saveCurrentTracks() {
                 localStorage.setItem('playlistData', JSON.stringify(this.tracks));
-            }
+            }*/
+
         }
     }
 </script>
