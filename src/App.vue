@@ -14,12 +14,12 @@
         </v-toolbar>
 
         <v-content>
-            <div v-if="!playlist" style="text-align: center;">
+            <PlaylistTable v-if="playlist.length" @playTrack="onPlayTrack"/>
+
+            <div v-else style="text-align: center;">
                 <PlaylistReader/>
                 <v-btn v-if="isInLS" flat @click="loadFromLS"><span class="mr-2">Load from previous session</span></v-btn>
             </div>
-
-            <PlaylistTable v-if="playlist" @playTrack="onPlayTrack"/>
         </v-content>
 
         <v-footer v-if="plStatus !== 'none'" app class="py-2 px-3" height="auto" color="secondary lighten-1">
@@ -31,18 +31,18 @@
 
             <v-spacer></v-spacer>
 
-            <v-btn v-if="['fetching', 'new'].some(item => item === plStatus)"
+            <v-btn v-if="['fetching', 'new'].includes(plStatus)"
                    color="accent"
                    light
                    :loading="plStatus === 'fetching'"
                    @click="fetchAllPlaylist">Fetch From Deezer</v-btn>
-            <v-btn v-else light color="accent" @click="importPlaylist">
-                <span>Import Playlist</span>
+            <v-btn v-else light color="accent" @click="exportPlaylist">
+                <span>Export Playlist</span>
             </v-btn>
 
         </v-footer>
 
-        <v-dialog v-model="importModal" width="800px"> <!--TODO (17.03.2019): Add success & error alerts-->
+        <v-dialog v-model="exportModal" width="800px"> <!--TODO (17.03.2019): Add success & error alerts-->
             <v-card>
                 <v-card-title class="grey lighten-4 py-4 title">Playlists creation</v-card-title>
 
@@ -51,28 +51,47 @@
                     <v-list-tile avatar>
                         <v-list-tile-content>
                             <v-list-tile-title>Tracks will be imported:</v-list-tile-title>
-                            <v-list-tile-sub-title>{{properTracksAmount}}/{{allTracksAmount}}</v-list-tile-sub-title>
+                            <v-list-tile-sub-title>{{getDeezerTrackIds.length - getDuplicateTracks.length}}/{{playlist.length}}</v-list-tile-sub-title>
                         </v-list-tile-content>
                     </v-list-tile>
                 </v-list>
+
                 <v-divider></v-divider>
+
+                <v-list two-line subheader class="tracks-list">
+                    <v-subheader>Duplicated Tracks</v-subheader>
+                    <template v-for="item in getDuplicateTracks">
+                        <v-list-tile :key="item.deezer.id" avatar>
+                            <v-list-tile-avatar>
+                                <img :src="item.deezer.album.cover_small">
+                            </v-list-tile-avatar>
+                            <v-list-tile-content>
+                                <v-list-tile-title v-html="item.deezer.title"></v-list-tile-title>
+                                <v-list-tile-sub-title v-html="item.deezer.artist.name"></v-list-tile-sub-title>
+                            </v-list-tile-content>
+                        </v-list-tile>
+                    </template>
+                </v-list>
+
+                <v-divider></v-divider>
+
                 <v-container grid-list-sm class="pa-4">
                     <v-layout row wrap>
-                        <v-flex v-for="(playlist, index) in resultPlaylists" xs12>
+                        <v-flex v-for="(playlist, index) in getExportPlaylists" xs12>
                             <v-text-field
                                     prepend-icon="playlist_play"
                                     placeholder="Playlist Title"
-                                    :value="playlist.name"
+                                    :value="playlistsNames[index] || playlist.name"
                                     @change="changePlaylistName($event, index)"
                             ></v-text-field>
                         </v-flex>
                     </v-layout>
                 </v-container>
                 <v-card-actions>
-                    <v-btn flat color="primary" @click="importModal = false">Cancel</v-btn>
+                    <v-btn flat color="primary" @click="exportModal = false">Cancel</v-btn>
                     <v-spacer></v-spacer>
                     <v-btn flat @click="saveMissedTracks" color="orange"><v-icon left>insert_drive_file</v-icon>Save not imported tracks</v-btn>
-                    <v-btn flat @click="importToDeezer"><v-icon left>cloud_upload</v-icon>Import to Deezer</v-btn>
+                    <v-btn flat @click="exportToDeezer"><v-icon left>cloud_upload</v-icon>Import to Deezer</v-btn>
                 </v-card-actions>
             </v-card>
         </v-dialog>
@@ -83,6 +102,7 @@
     import { mapState, mapGetters, mapActions } from 'vuex';
     import PlaylistReader from './components/PlaylistReader';
     import PlaylistTable from './components/PlaylistTable';
+    import API from './api';
 
     export default {
         name: 'App',
@@ -92,14 +112,12 @@
         },
         data() {
             return {
-                importModal: false,
+                exportModal: false,
                 user: null,
                 app_id: 334002,
                 userPlaylist: null,
                 isInLS: false,
-                allTracksAmount: 0,
-                properTracksAmount: 0,
-                resultPlaylists: []
+                playlistsNames: []
             }
         },
         mounted() {
@@ -129,7 +147,7 @@
             ...mapGetters([
                 'getDeezerTrackIds',
                 'getDuplicateTracks',
-                'getImportPlaylists'
+                'getExportPlaylists'
             ])
         },
         methods: {
@@ -147,47 +165,32 @@
                     }
                 }, { perms: 'basic_access,manage_library' });
             },
-            importPlaylist() {
+            exportPlaylist() {
                 DZ.getLoginStatus((response) => {
+                    console.log(this.plStatus);
                     if (response.status === 'connected') {
-                        if (this.$store.plStatus === 'fetched') this.importModal = true; // TODO (31.03.2019) Finish playlist import logic with vuex store.
+                        if (this.plStatus === 'fetched') this.exportModal = true; // TODO (31.03.2019) Finish playlist import logic with vuex store.
                     } else {
                         this.deezerLogIn();
                     }
                 });
             },
-            importToDeezer() {
-                const promises = this.resultPlaylists.map(pl => {
-                    return new Promise((resolve, reject) => {
-                        DZ.api('user/me/playlists', 'POST', {title: pl.name}, (response) => {
-                            if (response.error) reject(response);
-                            else {
-                                console.log("New playlist ID", response.id);
-                                DZ.api(`playlist/${response.id}/tracks`, 'POST', {songs: pl.songs}, (response) => {
-                                    if (response.error) reject(response);
-                                    else {
-                                        console.log("Songs were added", pl);
-                                        resolve(response);
-                                    }
-                                });
-                            }
-                        });
-                    })
-                });
+            exportToDeezer() {
+                const pl = this.getExportPlaylists.map((item, index) => ({...item, name: this.playlistsNames[index] || item.name}));
 
-                Promise.all(promises).then(res => {
-                    console.log('all playlists were added');
-                }).catch(console.error)
+                API.exportPlaylistToDeezer(pl)
+                    .then(res => {
+                        console.log('all playlists were added');
+                    })
+                    .catch(console.error);
             },
             changePlaylistName(value, index) {
-                this.resultPlaylists[index].name = value;
+                this.playlistsNames[index] = value;
             },
             saveMissedTracks() {
-                const missedTracks = this.$refs.playlistTable.tracks.reduce((acc, item) => {
-                    if (!item.deezer) {
-                        const {artist, title, length, file} = item;
-                        acc.push({artist, title, length, file});
-                    }
+                const missedTracks = this.playlist.reduce((acc, item) => {
+                    const {deezer, ...rest} = item;
+                    if (!deezer) acc.push(rest);
                     return acc;
                 }, []);
                 this.downloadObjectAsJson(missedTracks);

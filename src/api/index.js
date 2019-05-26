@@ -17,3 +17,39 @@ export function getDeezerTrack({artist, title}) {
         });
     });
 }
+
+export function findDeezerTracks({artist, title}) {
+    return new Promise((resolve) => {
+        DZ.api(`/search?q=artist:"${artist}" track:"${title}"`, function (response) {
+            resolve(response.data.filter(item => item.type === 'track'));
+        });
+    });
+}
+
+export function exportPlaylistToDeezer(playlists) {
+    const promises = playlists.map(pl => {
+        return new Promise((resolve, reject) => {
+            DZ.api('user/me/playlists', 'POST', {title: pl.name}, (response) => {
+                if (response.error) reject(response);
+                else {
+                    console.log("New playlist ID", response.id);
+                    DZ.api(`playlist/${response.id}/tracks`, 'POST', {songs: pl.songs}, (response) => {
+                        if (response.error) reject(response);
+                        else {
+                            console.log("Songs were added", pl);
+                            resolve(response);
+                        }
+                    });
+                }
+            });
+        })
+    });
+
+    return Promise.all(promises);
+}
+
+export default {
+    getDeezerTrack,
+    findDeezerTracks,
+    exportPlaylistToDeezer
+}

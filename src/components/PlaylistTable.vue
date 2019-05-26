@@ -19,23 +19,42 @@
                         <v-container grid-list-md>
                             <v-layout wrap>
                                 <v-flex md12>
-                                    <v-text-field v-model="editedItem.artist" label="Artist"></v-text-field>
-                                </v-flex>
-                                <v-flex md12>
-                                    <v-text-field v-model="editedItem.title" label="Title"></v-text-field>
+                                    <v-text-field v-model.lazy="editedItem.artist" @change="findTracks" label="Artist"></v-text-field>
+                                    <v-text-field v-model.lazy="editedItem.title" @change="findTracks" label="Title"></v-text-field>
                                 </v-flex>
                             </v-layout>
                         </v-container>
+
+                        <v-subheader>Found tracks</v-subheader>
+
+                        <v-alert :value="!foundTracks.length" color="warning" icon="info" outline>Nothing Found</v-alert>
+
+                        <v-list two-line class="tracks-list">
+                            <template v-for="(item, index) in foundTracks">
+                                <v-divider :key="index"></v-divider>
+                                <v-list-tile :key="item.id" avatar :class="{blue: editedItem.deezer && editedItem.deezer.id === item.id}" @click="selectDeezerTrack(item)">
+                                    <v-list-tile-avatar>
+                                        <img :src="item.album.cover_small">
+                                    </v-list-tile-avatar>
+                                    <v-list-tile-content>
+                                        <v-list-tile-title v-html="item.title"></v-list-tile-title>
+                                        <v-list-tile-sub-title v-html="item.artist.name"></v-list-tile-sub-title>
+                                    </v-list-tile-content>
+                                </v-list-tile>
+                            </template>
+                        </v-list>
                     </v-card-text>
 
                     <v-card-actions>
                         <v-spacer></v-spacer>
                         <v-btn color="blue darken-1" flat @click="close">Cancel</v-btn>
-                        <v-btn color="blue darken-1" flat @click="save">Save</v-btn>
+                        <v-btn color="blue darken-1" flat @click="save" :disabled="!editedItem.deezer">Save</v-btn>
                     </v-card-actions>
                 </v-card>
             </v-dialog>
         </v-toolbar>
+
+        <!--TODO (14.04.2019): handle item-key with unique value-->
         <v-data-table
                 v-model="selected"
                 :headers="headers"
@@ -43,19 +62,45 @@
                 :loading="plStatus === 'fetching'"
                 :pagination.sync="pagination"
                 :rows-per-page-items="[5,10,25,50,{text:'$vuetify.dataIterator.rowsPerPageAll',value:-1}]"
-                select-all
+                item-key="title"
+                select-all="toggleAllTracks"
                 class="elevation-1"
         >
+            <template v-slot:headers="props">
+                <tr>
+                    <th>
+                        <v-checkbox
+                                :input-value="props.all"
+                                :indeterminate="props.indeterminate"
+                                primary
+                                hide-details
+                                @click.stop="toggleAllTracks"
+                        ></v-checkbox>
+                    </th>
+                    <th
+                            v-for="header in props.headers"
+                            :key="header.text"
+                            :class="['column sortable', pagination.descending ? 'desc' : 'asc', header.value === pagination.sortBy ? 'active' : '']"
+                            @click="changeSort(header.value)"
+                    >
+                        <v-icon small>arrow_upward</v-icon>
+                        {{ header.text }}
+                    </th>
+                </tr>
+            </template>
+
             <template v-slot:progress>
                 <v-progress-linear :value="fetchProgressValue"></v-progress-linear>
             </template>
 
             <template v-slot:items="props">
-                <tr :active="props.selected" class="item-line" :class="getLineClass(props.item)">
+                <tr class="item-line" :class="getLineClass(props.item)">
                     <td>
+                        <v-icon v-if="getLineClass(props.item).empty" color="error">error_outline</v-icon>
                         <v-checkbox
-                                :input-value="props.selected"
-                                primary
+                                v-else
+                                v-model="props.selected"
+                                :color="getLineClass(props.item).warn ? 'warn' : 'primary'"
                                 hide-details
                         ></v-checkbox>
                     </td>
@@ -104,7 +149,8 @@
 </template>
 
 <script>
-    import { mapState, mapGetters } from 'vuex';
+    import { mapState, mapMutations, mapGetters } from 'vuex';
+    import API from '../api/index';
 
     export default {
         data: () => ({
@@ -121,11 +167,13 @@
                 rowsPerPage: 50
             },
             tracks: [],
-            selected: [], // TODO (24.03.2019): Add logic for selected tracks
+            selected: [], // TODO (26.05.2019): Embed selected tracks with store
+            foundTracks: [],
             editedIndex: -1,
             editedItem: {
-                name: '',
-                title: ''
+                artist: '',
+                title: '',
+                deezer: null
             }
         }),
 
@@ -146,49 +194,74 @@
             ]),
         },
 
-        // TODO (07.04.2019): move all edit logic to state
         methods: {
+            changeSort(column) {
+                if (this.pagination.sortBy === column) {
+                    this.pagination.descending = !this.pagination.descending;
+                } else {
+                    this.pagination.sortBy = column;
+                    this.pagination.descending = false;
+                }
+            },
+
             editItem(item) {
-                console.log(item);
-                this.editedIndex = this.tracks.indexOf(item);
+                this.editedIndex = this.playlist.indexOf(item);
                 this.editedItem = Object.assign({}, item);
-                this.dialog = true
+                this.findTracks();
+                this.dialog = true;
             },
 
             deleteItem(item) {
                 const index = this.tracks.indexOf(item);
-                confirm('Are you sure you want to delete this item?') && this.tracks.splice(index, 1)
+                confirm('Are you sure you want to delete this item?') && this.removePlaylistTrack({index});
+            },
+
+            findTracks() {
+                API.findDeezerTracks(this.editedItem)
+                    .then(res => this.foundTracks = res)
+                    .catch(console.error);
+            },
+
+            selectDeezerTrack(track) {
+                this.editedItem.deezer = track;
+                this.foundTracks = [...this.foundTracks];
             },
 
             close() {
                 this.dialog = false;
                 setTimeout(() => {
-                    this.editedItem = {name: '', title: ''};
+                    this.foundTracks = [];
+                    this.editedItem = {artist: '', title: '', deezer: null};
                     this.editedIndex = -1
                 }, 300)
             },
 
             save() {
                 if (this.editedIndex > -1) {
-                    Object.assign(this.tracks[this.editedIndex], this.editedItem);
-                    this.getDeezerTrack(this.tracks[this.editedIndex])
-                    .then(track => {
-                        this.tracks[this.editedIndex].deezer = track;
-                        console.log(this.tracks[this.editedIndex]);
-                        // this.saveCurrentTracks();
-                        this.close()
+                    this.updatePlaylistTrack({
+                        index: this.editedIndex,
+                        track: this.editedItem
                     });
+                    this.dialog = false;
                 }
             },
+
+            toggleAllTracks () {
+                if (this.selected.length) this.selected = [];
+                else this.selected = this.playlist.slice().filter(item => item.deezer && item.deezer.id);
+            },
+
             playTrack(track) {
                 // this.$emit('playTrack', track); // TODO (10.03.2019): add custom HTML5 player
             },
+
             getLineClass(track) {
                 if (!track.deezer || !track.deezer.artist || !track.deezer.title) return {empty: true};
                 else if (
                     track.deezer.artist.name.toLowerCase() !== track.artist.trim().toLowerCase() ||
                     track.deezer.title.toLowerCase() !== track.title.trim().toLowerCase()
-                ) return {warn: true}
+                ) return {warn: true};
+                else return {};
             },
 
 
@@ -196,6 +269,10 @@
                 localStorage.setItem('playlistData', JSON.stringify(this.tracks));
             }*/
 
+            ...mapMutations([
+                'updatePlaylistTrack',
+                'removePlaylistTrack'
+            ]),
         }
     }
 </script>
@@ -234,12 +311,17 @@
         background-color: rgba(255, 93, 97, 0.4);
     }
 
+    .tracks-list {
+        overflow: auto;
+        max-height: 300px;
+    }
+
     .item-line {
         &.empty {
-            background-color: rgba(255, 93, 97, 0.3);
+            background-color: rgba(255, 93, 97, 0.2);
         }
         &.warn {
-            background-color: rgba(255, 183, 75, 0.3);
+            background-color: rgba(255, 183, 75, 0.2);
         }
     }
 </style>
