@@ -56,14 +56,15 @@
 
         <!--TODO (14.04.2019): handle item-key with unique value-->
         <v-data-table
-                v-model="selected"
+                v-model="getSelectedTracks"
                 :headers="headers"
                 :items="playlist"
                 :loading="plStatus === 'fetching'"
                 :pagination.sync="pagination"
                 :rows-per-page-items="[5,10,25,50,{text:'$vuetify.dataIterator.rowsPerPageAll',value:-1}]"
                 item-key="title"
-                select-all="toggleAllTracks"
+                select-all="tooglePlaylistSelection"
+				disable-initial-sort
                 class="elevation-1"
         >
             <template v-slot:headers="props">
@@ -74,7 +75,7 @@
                                 :indeterminate="props.indeterminate"
                                 primary
                                 hide-details
-                                @click.stop="toggleAllTracks"
+                                @click.stop="tooglePlaylistSelection"
                         ></v-checkbox>
                     </th>
                     <th
@@ -99,7 +100,7 @@
                         <v-icon v-if="getLineClass(props.item).empty" color="error">error_outline</v-icon>
                         <v-checkbox
                                 v-else
-                                v-model="props.selected"
+                                v-model="props.item.selected"
                                 :color="getLineClass(props.item).warn ? 'warn' : 'primary'"
                                 hide-details
                         ></v-checkbox>
@@ -192,6 +193,7 @@
                 'fetchedAmount',
                 'playlist'
             ]),
+            ...mapGetters(['getSelectedTracks']),
         },
 
         methods: {
@@ -246,11 +248,6 @@
                 }
             },
 
-            toggleAllTracks () {
-                if (this.selected.length) this.selected = [];
-                else this.selected = this.playlist.slice().filter(item => item.deezer && item.deezer.id);
-            },
-
             playTrack(track) {
                 // this.$emit('playTrack', track); // TODO (10.03.2019): add custom HTML5 player
             },
@@ -271,13 +268,14 @@
 
             ...mapMutations([
                 'updatePlaylistTrack',
-                'removePlaylistTrack'
+                'removePlaylistTrack',
+                'tooglePlaylistSelection'
             ]),
         }
     }
 </script>
 
-<style scoped lang="scss">
+<style lang="scss">
     file-drop {
         width: 20%;
         height: 80px;

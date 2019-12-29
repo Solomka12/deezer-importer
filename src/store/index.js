@@ -15,11 +15,12 @@ export default new Vuex.Store({
     },
 
     getters: {
-        getDeezerTrackIds: state => state.playlist.filter(item => item.deezer).map(item => item.deezer.id),
-        getDuplicateTracks: (state, getters) => getDuplicates(getters.getDeezerTrackIds).map(id => state.playlist.find(track => track.deezer && track.deezer.id === id)),
+        getSelectedTracks: state => state.playlist.filter(track => track.selected),
+        getDeezerTrackIds: state => state.playlist.reduce((acc, { deezer }) => deezer && deezer.id ? [...acc, deezer.id] : acc, []),
+        getDuplicateTracks: (state, getters) => getDuplicates(getters.getSelectedTracks.map(t => t.deezer.id)).map(id => state.playlist.find(track => track.deezer && track.deezer.id === id)),
         getExportPlaylists: (state, getters) => {
             const PLAYLIST_SONGS_LIMIT = 2000;
-            const properTracks = Array.from(new Set(getters.getDeezerTrackIds)); // Removing duplicated track ids
+            const properTracks = Array.from(new Set(getters.getSelectedTracks.map(t => t.deezer.id))); // Removing duplicated track ids
             const splitedArr = getSplitArr(properTracks, PLAYLIST_SONGS_LIMIT);
             return splitedArr.map((item, i) => ({
                 name: 'Deezer Importer Playlist-' + (i + 1),
@@ -50,6 +51,13 @@ export default new Vuex.Store({
             const newPl = [...state.playlist];
             newPl[payload.index] = payload.track;
             state.playlist = newPl;
+        },
+        tooglePlaylistSelection(state) {
+            const newPl = [...state.playlist];
+            const selected = state.playlist.filter(track => track.selected);
+
+            if (selected.length) state.playlist = newPl.map(t => ({ ...t, selected: false }));
+            else state.playlist = newPl.map(t => ({ ...t, selected: Boolean(t.deezer && t.deezer.id) }));
         }
     },
 

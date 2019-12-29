@@ -1,3 +1,5 @@
+const DZ = window.DZ;
+
 export function getDeezerTrack({artist, title}) {
     return new Promise((resolve) => {
         let allowed = false;

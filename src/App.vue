@@ -51,7 +51,7 @@
                     <v-list-tile avatar>
                         <v-list-tile-content>
                             <v-list-tile-title>Tracks will be imported:</v-list-tile-title>
-                            <v-list-tile-sub-title>{{getDeezerTrackIds.length - getDuplicateTracks.length}}/{{playlist.length}}</v-list-tile-sub-title>
+                            <v-list-tile-sub-title>{{getSelectedTracks.length - getDuplicateTracks.length}}/{{playlist.length}}</v-list-tile-sub-title>
                         </v-list-tile-content>
                     </v-list-tile>
                 </v-list>
@@ -77,7 +77,7 @@
 
                 <v-container grid-list-sm class="pa-4">
                     <v-layout row wrap>
-                        <v-flex v-for="(playlist, index) in getExportPlaylists" xs12>
+                        <v-flex v-for="(playlist, index) in getExportPlaylists" xs12 :key="index">
                             <v-text-field
                                     prepend-icon="playlist_play"
                                     placeholder="Playlist Title"
@@ -99,10 +99,12 @@
 </template>
 
 <script>
-    import { mapState, mapGetters, mapActions } from 'vuex';
+    import { mapState, mapGetters, mapActions, mapMutations } from 'vuex';
     import PlaylistReader from './components/PlaylistReader';
     import PlaylistTable from './components/PlaylistTable';
     import API from './api';
+
+    const DZ = window.DZ;
 
     export default {
         name: 'App',
@@ -145,14 +147,15 @@
                 'playlist'
             ]),
             ...mapGetters([
-                'getDeezerTrackIds',
+                'getSelectedTracks',
                 'getDuplicateTracks',
                 'getExportPlaylists'
             ])
         },
         methods: {
             loadFromLS() { // TODO (17.03.2019): Add indexedDB
-                this.userPlaylist = JSON.parse(localStorage.getItem('playlistData'));
+                const pl = JSON.parse(localStorage.getItem('playlistData'));
+                this.setPlaylist(pl);
             },
             deezerLogIn() {
                 DZ.login((response) => {
@@ -179,7 +182,7 @@
                 const pl = this.getExportPlaylists.map((item, index) => ({...item, name: this.playlistsNames[index] || item.name}));
 
                 API.exportPlaylistToDeezer(pl)
-                    .then(res => {
+                    .then(() => {
                         console.log('all playlists were added');
                     })
                     .catch(console.error);
@@ -210,7 +213,10 @@
             },
 
             ...mapActions([
-                'fetchAllPlaylist'
+                'fetchAllPlaylist',
+            ]),
+            ...mapMutations([
+                'setPlaylist'
             ]),
         }
     }
