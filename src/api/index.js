@@ -1,7 +1,7 @@
 const DZ = window.DZ;
 
 export function getDeezerTrack({artist, title}) {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
         let allowed = false;
         let track = null;
 
@@ -11,9 +11,10 @@ export function getDeezerTrack({artist, title}) {
             else allowed = true;
         }, 100);
 
-        DZ.api(`/search?q=artist:"${artist}" track:"${title}"`, function (response) {
-            console.log(response);
-            const fetchedTrack = response.data.find(item => item.type === 'track');
+        DZ.api(`/search?q=artist:"${artist.replace('#', '')}" track:"${title.replace('#', '')}"`, res => {
+            console.log(res);
+            if (res.error) return reject(res.error);
+            const fetchedTrack = res.data.find(item => item.type === 'track');
             if (allowed) resolve(fetchedTrack);
             else track = fetchedTrack;
         });
@@ -22,7 +23,7 @@ export function getDeezerTrack({artist, title}) {
 
 export function findDeezerTracks({artist, title}) {
     return new Promise((resolve) => {
-        DZ.api(`/search?q=artist:"${artist}" track:"${title}"`, function (response) {
+        DZ.api(`/search?q=artist:"${artist.replace('#', '')}" track:"${title.replace('#', '')}"`, function (response) {
             resolve(response.data.filter(item => item.type === 'track'));
         });
     });

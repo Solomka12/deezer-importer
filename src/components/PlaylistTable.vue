@@ -116,7 +116,7 @@
                                 size="50"
                                 @click="playTrack(props.item)">
                             <img :src="props.item.deezer.album.cover_small" alt="avatar">
-                            <v-icon class="play-btn" large color="primary">
+                            <v-icon class="play-btn" large dark>
                                 play_circle_filled
                             </v-icon>
                         </v-avatar>
@@ -128,17 +128,8 @@
                         {{ props.item.deezer ? props.item.deezer.title : ''}}
                     </td>
                     <td class="justify-center layout px-0">
-                        <v-icon
-                                small
-                                class="mr-2"
-                                @click="editItem(props.item)">
-                            edit
-                        </v-icon>
-                        <v-icon
-                                small
-                                @click="deleteItem(props.item)">
-                            delete
-                        </v-icon>
+                        <v-icon small class="mr-2" @click="editItem(props.item)">edit</v-icon>
+                        <v-icon small @click="deleteItem(props.item)">delete</v-icon>
                     </td>
                 </tr>
             </template>
@@ -168,7 +159,6 @@
                 rowsPerPage: 50
             },
             tracks: [],
-            selected: [], // TODO (26.05.2019): Embed selected tracks with store
             foundTracks: [],
             editedIndex: -1,
             editedItem: {
@@ -214,7 +204,7 @@
             },
 
             deleteItem(item) {
-                const index = this.tracks.indexOf(item);
+                const index = this.playlist.indexOf(item);
                 confirm('Are you sure you want to delete this item?') && this.removePlaylistTrack({index});
             },
 
@@ -249,7 +239,7 @@
             },
 
             playTrack(track) {
-                // this.$emit('playTrack', track); // TODO (10.03.2019): add custom HTML5 player
+                this.$emit('playTrack', track); // TODO (10.03.2019): add custom HTML5 player
             },
 
             getLineClass(track) {
@@ -261,11 +251,6 @@
                 else return {};
             },
 
-
-            /*saveCurrentTracks() {
-                localStorage.setItem('playlistData', JSON.stringify(this.tracks));
-            }*/
-
             ...mapMutations([
                 'updatePlaylistTrack',
                 'removePlaylistTrack',
@@ -276,6 +261,14 @@
 </script>
 
 <style lang="scss">
+    #dz-root {
+        position: fixed;
+        bottom: 0;
+        z-index: 5;
+        width: 60% !important;
+        height: 92px !important;
+    }
+
     file-drop {
         width: 20%;
         height: 80px;
@@ -293,6 +286,7 @@
             position: absolute;
             opacity: 0;
             transition: .2s opacity;
+            background-color: rgba(0,0,0,0.6);
         }
         &:hover {
             .play-btn {

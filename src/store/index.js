@@ -1,6 +1,7 @@
 import Vue from 'vue';
 import Vuex from 'vuex';
 import eachSeries from 'async/eachSeries';
+import lf from 'localforage';
 
 import {getSplitArr, getDuplicates} from "../utils";
 import API from "../api/index";
@@ -36,9 +37,9 @@ export default new Vuex.Store({
         setPlStatus(state, payload) {
             state.plStatus = payload
         },
-        saveCurrentPl(state) {
-            localStorage.setItem('playlistData', JSON.stringify(state.playlist));
-        },
+        /* saveCurrentPl(state) {
+            // localStorage.setItem('playlistData', JSON.stringify(state.playlist));
+        }, */
         incrementFetchedAmount(state) {
             state.fetchedAmount += 1;
         },
@@ -46,11 +47,13 @@ export default new Vuex.Store({
             const newPl = [...state.playlist];
             newPl.splice(payload.index, 1);
             state.playlist = newPl;
+            lf.setItem('playlistData', newPl)
         },
         updatePlaylistTrack(state, payload) {
             const newPl = [...state.playlist];
             newPl[payload.index] = payload.track;
             state.playlist = newPl;
+            lf.setItem('playlistData', newPl)
         },
         tooglePlaylistSelection(state) {
             const newPl = [...state.playlist];
@@ -77,7 +80,11 @@ export default new Vuex.Store({
                 else console.log('All tracks have been processed successfully');
                 commit('setPlaylist', newPl);
                 commit('setPlStatus', 'fetched');
-                commit('saveCurrentPl');
+                // commit('saveCurrentPl');
+                lf.setItem('playlistData', state.playlist)
+                .catch(err => {
+                    console.log('DB save error:', err);
+                });
             });
         },
     }

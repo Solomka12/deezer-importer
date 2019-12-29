@@ -22,7 +22,7 @@
             </div>
         </v-content>
 
-        <v-footer v-if="plStatus !== 'none'" app class="py-2 px-3" height="auto" color="secondary lighten-1">
+        <v-footer v-if="plStatus !== 'none'" app class="py-2 px-3" height="92px" color="#23232c">
             <div class="player">
                 <v-btn icon color="accent">
                     <v-icon>play_arrow</v-icon>
@@ -100,6 +100,7 @@
 
 <script>
     import { mapState, mapGetters, mapActions, mapMutations } from 'vuex';
+    import lf from 'localforage';
     import PlaylistReader from './components/PlaylistReader';
     import PlaylistTable from './components/PlaylistTable';
     import API from './api';
@@ -117,20 +118,25 @@
                 exportModal: false,
                 user: null,
                 app_id: 334002,
-                userPlaylist: null,
                 isInLS: false,
                 playlistsNames: []
             }
         },
         mounted() {
-            this.isInLS = Boolean(localStorage.getItem('playlistData'));
+            // this.isInLS = Boolean(localStorage.getItem('playlistData'));
+            lf.keys()
+            .then(keys => this.isInLS = keys)
+            .catch(err=> console.log(err));
 
             DZ.init({
                 appId  : this.app_id,
                 channelUrl : 'http://localhost:8080/channel',
-                /*player : {
+                player : {
+                    // container: 'deezer-player',
+                    container: 'dz-root',
+                    size: 'small',
                     onload : this.onPlayerLoaded
-                }*/
+                }
             });
 
             DZ.getLoginStatus((response) => {
@@ -153,9 +159,16 @@
             ])
         },
         methods: {
-            loadFromLS() { // TODO (17.03.2019): Add indexedDB
-                const pl = JSON.parse(localStorage.getItem('playlistData'));
-                this.setPlaylist(pl);
+            loadFromLS() {
+                // const pl = JSON.parse(localStorage.getItem('playlistData'));
+                
+                lf.getItem('playlistData', (err, pl) => {
+                    if (err) console.error(err);
+                    else {
+                        this.setPlaylist(pl);
+                        this.setPlStatus('fetched');
+                    }
+                });
             },
             deezerLogIn() {
                 DZ.login((response) => {
@@ -211,12 +224,16 @@
                 DZ.player.playTracks([track.deezer.id]);
                 DZ.player.play();
             },
+            onPlayerLoaded(e) {
+                console.log('Player loaded:', e);
+            },
 
             ...mapActions([
                 'fetchAllPlaylist',
             ]),
             ...mapMutations([
-                'setPlaylist'
+                'setPlaylist',
+                'setPlStatus'
             ]),
         }
     }

@@ -10,6 +10,7 @@
   "dependencies": {
     "async": "^2.6.3",
     "file-drop-element": "^0.2.0",
+    "localforage": "^1.7.3",
     "playlist-parser": "0.0.12",
     "vue": "^2.6.11",
     "vuetify": "^1.5.21",
