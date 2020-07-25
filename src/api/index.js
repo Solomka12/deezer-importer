@@ -1,32 +1,41 @@
 const DZ = window.DZ;
 
-export function getDeezerTrack({artist, title}) {
-    return new Promise((resolve, reject) => {
+export function getfirstFoundDeezerTrack(trackData) {
+    return new Promise(async (resolve, reject) => {
         let allowed = false;
         let track = null;
 
+        // Due to the limit of api requests (50 per 5 seconds)
         setTimeout(() => {
-            console.log(allowed, track);
             if (track !== null) resolve(track);
             else allowed = true;
         }, 100);
 
-        DZ.api(`/search?q=artist:"${artist.replace('#', '')}" track:"${title.replace('#', '')}"`, res => {
-            console.log(res);
-            if (res.error) return reject(res.error);
-            const fetchedTrack = res.data.find(item => item.type === 'track');
-            if (allowed) resolve(fetchedTrack);
-            else track = fetchedTrack;
+        try {
+            const [firstTrack] = await findDeezerTracksByArtistAndTitle(trackData);
+            if (allowed) resolve(firstTrack);
+            else track = firstTrack;
+        } catch (e) {
+            reject(e);
+        }
+    });
+}
+
+export function findDeezerTracks(query = '', fuzzyMode = false) {
+    return new Promise((resolve, reject) => {
+        const urlSearchParams = new URLSearchParams(`q=${query}`);
+
+        if (fuzzyMode) urlSearchParams.append('strict', 'on');
+
+        DZ.api(`/search?${urlSearchParams}`, resp => {
+            if (resp.error) reject(resp.error);
+            else resolve(resp.data.filter(item => item.type === 'track'));
         });
     });
 }
 
-export function findDeezerTracks({artist, title}) {
-    return new Promise((resolve) => {
-        DZ.api(`/search?q=artist:"${artist.replace('#', '')}" track:"${title.replace('#', '')}"`, function (response) {
-            resolve(response.data.filter(item => item.type === 'track'));
-        });
-    });
+export function findDeezerTracksByArtistAndTitle({artist, title}, fuzzyMode) {
+    return findDeezerTracks(`artist:"${artist}" track:"${title}"`, fuzzyMode)
 }
 
 export function exportPlaylistToDeezer(playlists) {
@@ -52,7 +61,8 @@ export function exportPlaylistToDeezer(playlists) {
 }
 
 export default {
-    getDeezerTrack,
+    getfirstFoundDeezerTrack,
     findDeezerTracks,
+    findDeezerTracksByArtistAndTitle,
     exportPlaylistToDeezer
 }

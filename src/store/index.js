@@ -16,9 +16,11 @@ export default new Vuex.Store({
     },
 
     getters: {
-        getSelectedTracks: state => state.playlist.filter(track => track.selected),
+        getSelectedTracks: state => state.playlist.filter(track => track.selected && track.deezer && track.deezer.id),
         getDeezerTrackIds: state => state.playlist.reduce((acc, { deezer }) => deezer && deezer.id ? [...acc, deezer.id] : acc, []),
-        getDuplicateTracks: (state, getters) => getDuplicates(getters.getSelectedTracks.map(t => t.deezer.id)).map(id => state.playlist.find(track => track.deezer && track.deezer.id === id)),
+        getDuplicateTracks: (state, getters) =>
+            getDuplicates(getters.getSelectedTracks.map(t => t.deezer.id))
+            .map(id => state.playlist.find(track => track.deezer && track.deezer.id === id)),
         getExportPlaylists: (state, getters) => {
             const PLAYLIST_SONGS_LIMIT = 2000;
             const properTracks = Array.from(new Set(getters.getSelectedTracks.map(t => t.deezer.id))); // Removing duplicated track ids
@@ -69,9 +71,11 @@ export default new Vuex.Store({
             commit('setPlStatus', 'fetching');
             const newPl = JSON.parse(JSON.stringify(state.playlist));
             eachSeries(newPl, async (track, callback) => {
-                try { track.deezer = await API.getDeezerTrack(track) }
-                catch(err) { console.error(err) } // TODO (07.04.2019): add error alert
-                finally {
+                try {
+                    track.deezer = await API.getfirstFoundDeezerTrack(track)
+                } catch(err) {
+                    console.error(err)  // TODO (07.04.2019): add error alert
+                } finally {
                     commit('incrementFetchedAmount');
                     callback();
                 }
