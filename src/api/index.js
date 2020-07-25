@@ -12,7 +12,7 @@ export function getfirstFoundDeezerTrack(trackData) {
         }, 100);
 
         try {
-            const [firstTrack] = await findDeezerTracksByArtistAndTitle(trackData);
+            const [firstTrack] = await findDeezerTracks(`${trackData.artist} - ${trackData.title}`);
             if (allowed) resolve(firstTrack);
             else track = firstTrack;
         } catch (e) {
@@ -21,11 +21,11 @@ export function getfirstFoundDeezerTrack(trackData) {
     });
 }
 
-export function findDeezerTracks(query = '', fuzzyMode = false) {
+export function findDeezerTracks(query = '', strictMode = false) {
     return new Promise((resolve, reject) => {
         const urlSearchParams = new URLSearchParams(`q=${query}`);
 
-        if (fuzzyMode) urlSearchParams.append('strict', 'on');
+        if (strictMode) urlSearchParams.append('strict', 'on');
 
         DZ.api(`/search?${urlSearchParams}`, resp => {
             if (resp.error) reject(resp.error);
@@ -34,8 +34,8 @@ export function findDeezerTracks(query = '', fuzzyMode = false) {
     });
 }
 
-export function findDeezerTracksByArtistAndTitle({artist, title}, fuzzyMode) {
-    return findDeezerTracks(`artist:"${artist}" track:"${title}"`, fuzzyMode)
+export function findDeezerTracksByArtistAndTitle({artist, title}, strictMode) {
+    return findDeezerTracks(`artist:"${artist}" track:"${title}"`, strictMode)
 }
 
 export function exportPlaylistToDeezer(playlists) {
