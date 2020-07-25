@@ -9,49 +9,10 @@
             ></v-divider>
             <v-spacer></v-spacer>
 
-            <v-dialog v-model="dialog" max-width="500px"> <!--TODO (17.03.2019): Add displaying of song list to chose proper one-->
-                <v-card>
-                    <v-card-title>
-                        <span class="headline">Edit Item</span>
-                    </v-card-title>
-
-                    <v-card-text>
-                        <v-container grid-list-md>
-                            <v-layout wrap>
-                                <v-flex md12>
-                                    <v-text-field v-model.lazy="editedItem.artist" @change="findTracks" label="Artist"></v-text-field>
-                                    <v-text-field v-model.lazy="editedItem.title" @change="findTracks" label="Title"></v-text-field>
-                                </v-flex>
-                            </v-layout>
-                        </v-container>
-
-                        <v-subheader>Found tracks</v-subheader>
-
-                        <v-alert :value="!foundTracks.length" color="warning" icon="info" outline>Nothing Found</v-alert>
-
-                        <v-list two-line class="tracks-list">
-                            <template v-for="(item, index) in foundTracks">
-                                <v-divider :key="index"></v-divider>
-                                <v-list-tile :key="item.id" avatar :class="{blue: editedItem.deezer && editedItem.deezer.id === item.id}" @click="selectDeezerTrack(item)">
-                                    <v-list-tile-avatar>
-                                        <img :src="item.album.cover_small">
-                                    </v-list-tile-avatar>
-                                    <v-list-tile-content>
-                                        <v-list-tile-title v-html="item.title"></v-list-tile-title>
-                                        <v-list-tile-sub-title v-html="item.artist.name"></v-list-tile-sub-title>
-                                    </v-list-tile-content>
-                                </v-list-tile>
-                            </template>
-                        </v-list>
-                    </v-card-text>
-
-                    <v-card-actions>
-                        <v-spacer></v-spacer>
-                        <v-btn color="blue darken-1" flat @click="close">Cancel</v-btn>
-                        <v-btn color="blue darken-1" flat @click="save" :disabled="!editedItem.deezer">Save</v-btn>
-                    </v-card-actions>
-                </v-card>
-            </v-dialog>
+            <TrackEditDialog :selected-track="editedItem"
+                             @save="onEditedTrackSave"
+                             @cancel="setEditTrack(null)">
+            </TrackEditDialog>
         </v-toolbar>
 
         <!--TODO (14.04.2019): handle item-key with unique value-->
@@ -128,7 +89,7 @@
                         {{ props.item.deezer ? props.item.deezer.title : ''}}
                     </td>
                     <td class="justify-center layout px-0">
-                        <v-icon small class="mr-2" @click="editItem(props.item)">edit</v-icon>
+                        <v-icon small class="mr-2" @click="setEditTrack(props.item)">edit</v-icon>
                         <v-icon small @click="deleteItem(props.item)">delete</v-icon>
                     </td>
                 </tr>
@@ -141,12 +102,15 @@
 </template>
 
 <script>
-    import { mapState, mapMutations, mapGetters } from 'vuex';
-    import API from '../api/index';
+    import {mapState, mapMutations, mapGetters} from 'vuex';
+
+    import TrackEditDialog from './TrackEditDialog';
 
     export default {
+        components: {
+            TrackEditDialog,
+        },
         data: () => ({
-            dialog: false,
             headers: [
                 { text: 'Artist', align: 'right', value: 'artist' },
                 { text: 'Title', align: 'left', value: 'title' },
@@ -158,14 +122,7 @@
             pagination: {
                 rowsPerPage: 50
             },
-            tracks: [],
-            foundTracks: [],
-            editedIndex: -1,
-            editedItem: {
-                artist: '',
-                title: '',
-                deezer: null
-            }
+            editedItem: null
         }),
 
         watch: {
@@ -196,46 +153,21 @@
                 }
             },
 
-            editItem(item) {
-                this.editedIndex = this.playlist.indexOf(item);
-                this.editedItem = Object.assign({}, item);
-                this.findTracks();
-                this.dialog = true;
-            },
-
             deleteItem(item) {
                 const index = this.playlist.indexOf(item);
                 confirm('Are you sure you want to delete this item?') && this.removePlaylistTrack({index});
             },
 
-            findTracks() {
-                API.findDeezerTracks(this.editedItem)
-                    .then(res => this.foundTracks = res)
-                    .catch(console.error);
+            setEditTrack(track) {
+                this.editedItem = track;
             },
 
-            selectDeezerTrack(track) {
-                this.editedItem.deezer = track;
-                this.foundTracks = [...this.foundTracks];
-            },
+            onEditedTrackSave(track) {
+                const index = this.playlist.indexOf(this.editedItem);
 
-            close() {
-                this.dialog = false;
-                setTimeout(() => {
-                    this.foundTracks = [];
-                    this.editedItem = {artist: '', title: '', deezer: null};
-                    this.editedIndex = -1
-                }, 300)
-            },
+                if (index >= 0) this.updatePlaylistTrack({index, track: {...this.editedItem, ...track}});
 
-            save() {
-                if (this.editedIndex > -1) {
-                    this.updatePlaylistTrack({
-                        index: this.editedIndex,
-                        track: this.editedItem
-                    });
-                    this.dialog = false;
-                }
+                this.setEditTrack(null);
             },
 
             playTrack(track) {
@@ -301,11 +233,6 @@
 
     file-drop.drop-invalid {
         background-color: rgba(255, 93, 97, 0.4);
-    }
-
-    .tracks-list {
-        overflow: auto;
-        max-height: 300px;
     }
 
     .item-line {
