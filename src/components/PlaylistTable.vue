@@ -102,7 +102,7 @@
 </template>
 
 <script>
-    import {mapState, mapMutations, mapGetters} from 'vuex';
+    import {mapState, mapActions, mapGetters} from 'vuex';
 
     import TrackEditDialog from './TrackEditDialog';
 
@@ -135,11 +135,11 @@
             fetchProgressValue() {
                 return this.fetchedAmount / this.playlist.length * 100;
             },
-            ...mapState([
-                'plStatus',
-                'fetchedAmount',
-                'playlist'
-            ]),
+            ...mapState({
+                plStatus: state => state.playlist.plStatus,
+                fetchedAmount: state => state.playlist.fetchedAmount,
+                playlist: state => state.playlist.playlist
+            }),
             ...mapGetters(['getSelectedTracks']),
         },
 
@@ -183,7 +183,7 @@
                 else return {};
             },
 
-            ...mapMutations([
+            ...mapActions([
                 'updatePlaylistTrack',
                 'removePlaylistTrack',
                 'tooglePlaylistSelection'

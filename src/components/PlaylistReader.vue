@@ -47,8 +47,8 @@
                         playlist = PLParser.M3U.parse(e.target.result, { encoding: "utf8" });
                     }
 
-                    this.$store.commit('setPlaylist', playlist);
-                    this.$store.commit('setPlStatus', 'new');
+                    this.$store.dispatch('setInitialPlaylist', playlist);
+                    this.$store.dispatch('setPlaylistStatus', 'new');
                 };
                 reader.readAsText(data);
             }

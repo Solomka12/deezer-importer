@@ -12,7 +12,7 @@ export function getfirstFoundDeezerTrack(trackData) {
         }, 100);
 
         try {
-            const [firstTrack] = await findDeezerTracks(`${trackData.artist} - ${trackData.title}`);
+            const [firstTrack] = await findDeezerTracksByArtistAndTitle(trackData);
             if (allowed) resolve(firstTrack);
             else track = firstTrack;
         } catch (e) {

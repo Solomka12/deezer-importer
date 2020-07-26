@@ -7,9 +7,9 @@
                 <span class="font-weight-light"> Playlist Importer</span>
             </v-toolbar-title>
             <v-spacer></v-spacer>
-            <div v-if="user" class="headline">Hello, {{user.name}}</div>
+            <div v-if="isLoggedIn" class="headline">Hello, {{user.name}}</div>
             <v-btn v-else flat @click="deezerLogIn">
-                <span class="mr-2">Connect to Deezer</span>
+                <span>LogIn</span>
             </v-btn>
         </v-toolbar>
 
@@ -18,7 +18,7 @@
 
             <div v-else style="text-align: center;">
                 <PlaylistReader/>
-                <v-btn v-if="isInLS" flat @click="loadFromLS"><span class="mr-2">Load from previous session</span></v-btn>
+                <v-btn v-if="isInLS" flat @click="loadFromLS"><span>Load from previous session</span></v-btn>
             </div>
         </v-content>
 
@@ -99,7 +99,7 @@
 </template>
 
 <script>
-    import { mapState, mapGetters, mapActions, mapMutations } from 'vuex';
+    import {mapState, mapGetters, mapActions} from 'vuex';
     import lf from 'localforage';
     import PlaylistReader from './components/PlaylistReader';
     import PlaylistTable from './components/PlaylistTable';
@@ -116,7 +116,6 @@
         data() {
             return {
                 exportModal: false,
-                user: null,
                 app_id: 334002,
                 isInLS: false,
                 playlistsNames: []
@@ -139,20 +138,24 @@
                 }
             });
 
-            DZ.getLoginStatus((response) => {
-                if (response.status === 'connected') {
-                    DZ.api('/user/me', (res) => {
-                        if (!res.error) this.user = res;
-                    });
-                }
+            DZ.ready(() => {
+                DZ.getLoginStatus(response => {
+                    if (response.status === 'connected') {
+                        DZ.api('/user/me', res => {
+                            if (!res.error) this.setUser(res);
+                        });
+                    }
+                });
             });
         },
         computed: {
-            ...mapState([
-                'plStatus',
-                'playlist'
-            ]),
+            ...mapState({
+                user: state => state.user.userInfo,
+                plStatus: state => state.playlist.plStatus,
+                playlist: state => state.playlist.playlist
+            }),
             ...mapGetters([
+                'isLoggedIn',
                 'getSelectedTracks',
                 'getDuplicateTracks',
                 'getExportPlaylists'
@@ -165,8 +168,8 @@
                 lf.getItem('playlistData', (err, pl) => {
                     if (err) console.error(err);
                     else {
-                        this.setPlaylist(pl);
-                        this.setPlStatus('fetched');
+                        this.setInitialPlaylist(pl);
+                        this.setPlaylistStatus('fetched');
                     }
                 });
             },
@@ -229,12 +232,11 @@
             },
 
             ...mapActions([
+                'setUser',
                 'fetchAllPlaylist',
-            ]),
-            ...mapMutations([
-                'setPlaylist',
-                'setPlStatus'
-            ]),
+                'setInitialPlaylist',
+                'setPlaylistStatus'
+            ])
         }
     }
 </script>
