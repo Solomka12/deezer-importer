@@ -8,7 +8,7 @@
             </v-toolbar-title>
             <v-spacer></v-spacer>
             <div v-if="isLoggedIn" class="headline">Hello, {{user.name}}</div>
-            <v-btn v-else flat @click="deezerLogIn">
+            <v-btn v-else flat @click="login">
                 <span>LogIn</span>
             </v-btn>
         </v-toolbar>
@@ -129,7 +129,7 @@
 
             DZ.init({
                 appId  : this.app_id,
-                channelUrl : 'http://localhost:8080/channel',
+                channelUrl : 'http://localhost:8080/channel.html',
                 player : {
                     // container: 'deezer-player',
                     container: 'dz-root',
@@ -173,24 +173,13 @@
                     }
                 });
             },
-            deezerLogIn() {
-                DZ.login((response) => {
-                    if (response.authResponse) {
-                        DZ.api('/user/me', (res) => {
-                            this.user = res;
-                        });
-                    } else {
-                        alert('User cancelled login or did not fully authorize.');
-                    }
-                }, { perms: 'basic_access,manage_library' });
-            },
             exportPlaylist() {
                 DZ.getLoginStatus((response) => {
                     console.log(this.plStatus);
                     if (response.status === 'connected') {
                         if (this.plStatus === 'fetched') this.exportModal = true; // TODO (31.03.2019) Finish playlist import logic with vuex store.
                     } else {
-                        this.deezerLogIn();
+                        this.login();
                     }
                 });
             },
@@ -232,6 +221,7 @@
             },
 
             ...mapActions([
+                'login',
                 'setUser',
                 'fetchAllPlaylist',
                 'setInitialPlaylist',
