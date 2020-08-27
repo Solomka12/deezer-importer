@@ -40,7 +40,7 @@ const actions = {
         const newPl = JSON.parse(JSON.stringify(state.playlist));
         eachSeries(newPl, async (track, callback) => {
             try {
-                track.deezer = await API.getfirstFoundDeezerTrack(track)
+                track.deezer = await API.getFirstFoundDeezerTrack(track)
             } catch(err) {
                 console.error(err)  // TODO (07.04.2019): add error alert
             } finally {

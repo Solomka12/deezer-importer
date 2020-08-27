@@ -1,6 +1,4 @@
-const DZ = window.DZ;
-
-export function getfirstFoundDeezerTrack(trackData) {
+export function getFirstFoundDeezerTrack(trackData) {
     return new Promise(async (resolve, reject) => {
         let allowed = false;
         let track = null;
@@ -27,7 +25,7 @@ export function findDeezerTracks(query = '', strictMode = false) {
 
         if (strictMode) urlSearchParams.append('strict', 'on');
 
-        DZ.api(`/search?${urlSearchParams}`, resp => {
+        window.DZ.api(`/search?${urlSearchParams}`, resp => {
             if (resp.error) reject(resp.error);
             else resolve(resp.data.filter(item => item.type === 'track'));
         });
@@ -41,11 +39,11 @@ export function findDeezerTracksByArtistAndTitle({artist, title}, strictMode) {
 export function exportPlaylistToDeezer(playlists) {
     const promises = playlists.map(pl => {
         return new Promise((resolve, reject) => {
-            DZ.api('user/me/playlists', 'POST', {title: pl.name}, (response) => {
+            window.DZ.api('user/me/playlists', 'POST', {title: pl.name}, (response) => {
                 if (response.error) reject(response);
                 else {
                     console.log("New playlist ID", response.id);
-                    DZ.api(`playlist/${response.id}/tracks`, 'POST', {songs: pl.songs}, (response) => {
+                    window.DZ.api(`playlist/${response.id}/tracks`, 'POST', {songs: pl.songs}, (response) => {
                         if (response.error) reject(response);
                         else {
                             console.log("Songs were added", pl);
@@ -61,7 +59,7 @@ export function exportPlaylistToDeezer(playlists) {
 }
 
 export default {
-    getfirstFoundDeezerTrack,
+    getFirstFoundDeezerTrack,
     findDeezerTracks,
     findDeezerTracksByArtistAndTitle,
     exportPlaylistToDeezer

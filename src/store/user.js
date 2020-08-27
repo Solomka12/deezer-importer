@@ -1,9 +1,8 @@
-import store from './index';
+// import store from './index';
+// import {PLAYER_TYPES} from "../constants/constants";
 
 export const USER_SET_INFO = 'USER_SET_INFO';
 export const USER_LOGOUT = 'USER_LOGOUT';
-
-const DZ = window.DZ;
 
 const state = {
     userInfo: null,
@@ -15,26 +14,26 @@ const getters = {
 
 const actions = {
     login({commit}) {
-        if (!DZ) return;
+        if (!window.DZ) return;
 
-        DZ.login(response => {
+        window.DZ.login(response => {
             if (!response.status) return;
 
             if (response.authResponse) {
-                DZ.api('/user/me', response => {
+                window.DZ.api('/user/me', response => {
                     commit(USER_SET_INFO, response);
                 });
-                store.dispatch('setPlayerStatus', true);
+                // store.dispatch('setPlayerType', PLAYER_TYPES.DEEZER);
             } else {
                 alert('User cancelled login or did not fully authorize.');
             }
         }, { perms: 'basic_access,manage_library' });
     },
     logout({ commit }) {
-        if (DZ) DZ.logout();
+        if (window.DZ) window.DZ.logout();
 
         commit(USER_LOGOUT);
-        store.dispatch('setPlayerStatus', false);
+        // store.dispatch('setPlayerType', PLAYER_TYPES.AUDIO);
     },
     setUser({ commit }, userData) {
         commit(USER_SET_INFO, userData);

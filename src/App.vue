@@ -1,6 +1,5 @@
 <template>
     <v-app>
-        <div id="dz-root"></div>
         <v-toolbar app>
             <v-toolbar-title class="headline text-uppercase">
                 <span>Deezer</span>
@@ -22,12 +21,9 @@
             </div>
         </v-content>
 
-        <v-footer v-if="plStatus !== 'none'" app class="py-2 px-3" height="92px" color="#23232c">
-            <div class="player">
-                <v-btn icon color="accent">
-                    <v-icon>play_arrow</v-icon>
-                </v-btn>
-            </div>
+        <v-footer v-if="plStatus !== 'none'" app height="90">
+
+            <AudioPlayer/>
 
             <v-spacer></v-spacer>
 
@@ -41,6 +37,8 @@
             </v-btn>
 
         </v-footer>
+
+        <InfoSnackbar/>
 
         <v-dialog v-model="exportModal" width="800px"> <!--TODO (17.03.2019): Add success & error alerts-->
             <v-card>
@@ -103,50 +101,61 @@
     import lf from 'localforage';
     import PlaylistReader from './components/PlaylistReader';
     import PlaylistTable from './components/PlaylistTable';
+    import AudioPlayer from './components/AudioPlayer';
+    import InfoSnackbar from './components/InfoSnackbar';
     import API from './api';
-
-    const DZ = window.DZ;
+    import {initializeDeezerPlayer} from "./services/deezer.player";
+    import {APP_ID, PLAYER_TYPES} from "./constants/constants";
 
     export default {
         name: 'App',
         components: {
             PlaylistReader,
-            PlaylistTable
+            PlaylistTable,
+            AudioPlayer,
+            InfoSnackbar
         },
         data() {
             return {
                 exportModal: false,
-                app_id: 334002,
                 isInLS: false,
                 playlistsNames: []
             }
         },
         mounted() {
-            // this.isInLS = Boolean(localStorage.getItem('playlistData'));
             lf.keys()
             .then(keys => this.isInLS = keys)
             .catch(err=> console.log(err));
 
-            DZ.init({
-                appId  : this.app_id,
-                channelUrl : 'http://localhost:8080/channel.html',
-                player : {
-                    // container: 'deezer-player',
-                    container: 'dz-root',
-                    size: 'small',
-                    onload : this.onPlayerLoaded
-                }
-            });
-
-            DZ.ready(() => {
-                DZ.getLoginStatus(response => {
-                    if (response.status === 'connected') {
-                        DZ.api('/user/me', res => {
-                            if (!res.error) this.setUser(res);
-                        });
+            window.dzAsyncInit = () => {
+                window.DZ.init({
+                    appId  : APP_ID,
+                    channelUrl : 'http://localhost:8080/channel',
+                    player : {
+                        onload: this.onPlayerLoaded
                     }
                 });
-            });
+
+                window.DZ.ready(() => {
+                    window.DZ.getLoginStatus(response => {
+                        if (response.status === 'connected') {
+                            window.DZ.api('/user/me', res => {
+                                if (res.error) return;
+
+                                this.setUser(res);
+                                this.setPlayerType(PLAYER_TYPES.AUDIO);
+                            });
+                        }
+                    });
+                });
+            };
+
+            (function() {
+                const e = document.createElement('script');
+                e.src = 'https://e-cdns-files.dzcdn.net/js/min/dz.js';
+                e.async = true;
+                document.getElementById('dz-root').appendChild(e);
+            })();
         },
         computed: {
             ...mapState({
@@ -174,7 +183,7 @@
                 });
             },
             exportPlaylist() {
-                DZ.getLoginStatus((response) => {
+                window.DZ.getLoginStatus((response) => {
                     console.log(this.plStatus);
                     if (response.status === 'connected') {
                         if (this.plStatus === 'fetched') this.exportModal = true; // TODO (31.03.2019) Finish playlist import logic with vuex store.
@@ -213,10 +222,11 @@
                 downloadAnchorNode.remove();
             },
             onPlayTrack(track) {
-                DZ.player.playTracks([track.deezer.id]);
-                DZ.player.play();
+                this.play(track.deezer);
             },
             onPlayerLoaded(e) {
+                initializeDeezerPlayer();
+                this.setPlayerType(PLAYER_TYPES.DEEZER);
                 console.log('Player loaded:', e);
             },
 
@@ -225,7 +235,9 @@
                 'setUser',
                 'fetchAllPlaylist',
                 'setInitialPlaylist',
-                'setPlaylistStatus'
+                'setPlaylistStatus',
+                'play',
+                'setPlayerType'
             ])
         }
     }

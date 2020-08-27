@@ -193,14 +193,6 @@
 </script>
 
 <style lang="scss">
-    #dz-root {
-        position: fixed;
-        bottom: 0;
-        z-index: 5;
-        width: 60% !important;
-        height: 92px !important;
-    }
-
     file-drop {
         width: 20%;
         height: 80px;

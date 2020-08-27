@@ -11,6 +11,15 @@ export function getDuplicates(arr) {
     }, []);
 }
 
+export function secondsToMMSS(secs = 0) {
+    secs = Math.round(secs || 0);
+    const minutes = Math.floor(secs / 60);
+    const divisor_for_minutes = secs % (60 * 60);
+    const seconds = Math.ceil(divisor_for_minutes % 60);
+
+    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+}
+
 /*export function getDuplicates(arr) {
     const obj = arr.reduce((acc, item) => ({ ...acc, [item]: (acc[item] || 0) + 1}), {});
 
