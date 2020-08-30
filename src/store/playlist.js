@@ -28,7 +28,7 @@ const getters = {
         const properTracks = Array.from(new Set(getters.getSelectedTracks.map(t => t.deezer.id))); // Removing duplicated track ids
         const splitedArr = getSplitArr(properTracks, PLAYLIST_SONGS_LIMIT);
         return splitedArr.map((item, i) => ({
-            name: 'Deezer Importer Playlist-' + (i + 1),
+            name: 'Deezer Playlist Importer ' + (i + 1),
             songs: item.join()
         }));
     }

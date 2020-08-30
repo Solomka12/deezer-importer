@@ -52,7 +52,8 @@ const actions = {
     audioError({state, dispatch}) {
         eventBus.$emit(
             'showSnackbar',
-            `Error on loading track: ${state.activeTrack.artist.name} - ${state.activeTrack.title}`
+            `Error on loading track: ${state.activeTrack.artist.name} - ${state.activeTrack.title}`,
+            'error'
         );
         dispatch('audioEnd');
         dispatch('setTrackError');

@@ -38,61 +38,9 @@
 
         </v-footer>
 
+        <ExportModal v-model="exportModalActive"/>
+
         <InfoSnackbar/>
-
-        <v-dialog v-model="exportModal" width="800px"> <!--TODO (17.03.2019): Add success & error alerts-->
-            <v-card>
-                <v-card-title class="grey lighten-4 py-4 title">Playlists creation</v-card-title>
-
-                <v-list three-line subheader>
-                    <v-subheader>General Info</v-subheader>
-                    <v-list-tile avatar>
-                        <v-list-tile-content>
-                            <v-list-tile-title>Tracks will be imported:</v-list-tile-title>
-                            <v-list-tile-sub-title>{{getSelectedTracks.length - getDuplicateTracks.length}}/{{playlist.length}}</v-list-tile-sub-title>
-                        </v-list-tile-content>
-                    </v-list-tile>
-                </v-list>
-
-                <v-divider></v-divider>
-
-                <v-list two-line subheader class="tracks-list">
-                    <v-subheader>Duplicated Tracks</v-subheader>
-                    <template v-for="item in getDuplicateTracks">
-                        <v-list-tile :key="item.deezer.id" avatar>
-                            <v-list-tile-avatar>
-                                <img :src="item.deezer.album.cover_small">
-                            </v-list-tile-avatar>
-                            <v-list-tile-content>
-                                <v-list-tile-title v-html="item.deezer.title"></v-list-tile-title>
-                                <v-list-tile-sub-title v-html="item.deezer.artist.name"></v-list-tile-sub-title>
-                            </v-list-tile-content>
-                        </v-list-tile>
-                    </template>
-                </v-list>
-
-                <v-divider></v-divider>
-
-                <v-container grid-list-sm class="pa-4">
-                    <v-layout row wrap>
-                        <v-flex v-for="(playlist, index) in getExportPlaylists" xs12 :key="index">
-                            <v-text-field
-                                    prepend-icon="playlist_play"
-                                    placeholder="Playlist Title"
-                                    :value="playlistsNames[index] || playlist.name"
-                                    @change="changePlaylistName($event, index)"
-                            ></v-text-field>
-                        </v-flex>
-                    </v-layout>
-                </v-container>
-                <v-card-actions>
-                    <v-btn flat color="primary" @click="exportModal = false">Cancel</v-btn>
-                    <v-spacer></v-spacer>
-                    <v-btn flat @click="saveMissedTracks" color="orange"><v-icon left>insert_drive_file</v-icon>Save not imported tracks</v-btn>
-                    <v-btn flat @click="exportToDeezer"><v-icon left>cloud_upload</v-icon>Import to Deezer</v-btn>
-                </v-card-actions>
-            </v-card>
-        </v-dialog>
     </v-app>
 </template>
 
@@ -102,8 +50,8 @@
     import PlaylistReader from './components/PlaylistReader';
     import PlaylistTable from './components/PlaylistTable';
     import AudioPlayer from './components/AudioPlayer';
+    import ExportModal from './components/ExportModal';
     import InfoSnackbar from './components/InfoSnackbar';
-    import API from './api';
     import {initializeDeezerPlayer} from "./services/deezer.player";
     import {APP_ID, PLAYER_TYPES} from "./constants/constants";
 
@@ -113,13 +61,13 @@
             PlaylistReader,
             PlaylistTable,
             AudioPlayer,
+            ExportModal,
             InfoSnackbar
         },
         data() {
             return {
-                exportModal: false,
-                isInLS: false,
-                playlistsNames: []
+                exportModalActive: false,
+                isInLS: false
             }
         },
         mounted() {
@@ -164,10 +112,7 @@
                 playlist: state => state.playlist.playlist
             }),
             ...mapGetters([
-                'isLoggedIn',
-                'getSelectedTracks',
-                'getDuplicateTracks',
-                'getExportPlaylists'
+                'isLoggedIn'
             ])
         },
         methods: {
@@ -184,42 +129,12 @@
             },
             exportPlaylist() {
                 window.DZ.getLoginStatus((response) => {
-                    console.log(this.plStatus);
                     if (response.status === 'connected') {
-                        if (this.plStatus === 'fetched') this.exportModal = true; // TODO (31.03.2019) Finish playlist import logic with vuex store.
+                        if (this.plStatus === 'fetched') this.exportModalActive = true;
                     } else {
                         this.login();
                     }
                 });
-            },
-            exportToDeezer() {
-                const pl = this.getExportPlaylists.map((item, index) => ({...item, name: this.playlistsNames[index] || item.name}));
-
-                API.exportPlaylistToDeezer(pl)
-                    .then(() => {
-                        console.log('all playlists were added');
-                    })
-                    .catch(console.error);
-            },
-            changePlaylistName(value, index) {
-                this.playlistsNames[index] = value;
-            },
-            saveMissedTracks() {
-                const missedTracks = this.playlist.reduce((acc, item) => {
-                    const {deezer, ...rest} = item;
-                    if (!deezer) acc.push(rest);
-                    return acc;
-                }, []);
-                this.downloadObjectAsJson(missedTracks);
-            },
-            downloadObjectAsJson(exportObj, exportName = 'missed_tracks') {
-                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportObj, null, '\t'));
-                const downloadAnchorNode = document.createElement('a');
-                downloadAnchorNode.setAttribute("href", dataStr);
-                downloadAnchorNode.setAttribute("download", exportName + ".json");
-                document.body.appendChild(downloadAnchorNode); // required for firefox
-                downloadAnchorNode.click();
-                downloadAnchorNode.remove();
             },
             onPlayTrack(track) {
                 this.play(track.deezer);

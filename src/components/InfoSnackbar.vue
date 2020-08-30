@@ -12,11 +12,12 @@
         data: () => ({
             show: false,
             text: '',
-            type: 'error'
+            type: 'info'
         }),
 
         mounted() {
-            eventBus.$on('showSnackbar', text => {
+            eventBus.$on('showSnackbar', (text, type) => {
+                this.type = type;
                 this.text = text;
                 this.show = true;
             });
