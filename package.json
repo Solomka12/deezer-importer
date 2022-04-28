@@ -8,7 +8,7 @@
     "lint": "vue-cli-service lint"
   },
   "dependencies": {
-    "async": "^2.6.3",
+    "async": "^2.6.4",
     "file-drop-element": "^0.2.0",
     "localforage": "^1.9.0",
     "playlist-parser": "0.0.12",
